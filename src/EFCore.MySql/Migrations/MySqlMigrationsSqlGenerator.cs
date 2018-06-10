@@ -242,14 +242,17 @@ namespace Microsoft.EntityFrameworkCore.Migrations
             if (operation.DefaultValue != null
                 || operation.DefaultValueSql != null)
             {
-                builder
-                    .Append("ALTER TABLE ")
-                    .Append(Dependencies.SqlGenerationHelper.DelimitIdentifier(operation.Table, operation.Schema))
-                    .Append(" ALTER COLUMN ")
-                    .Append(Dependencies.SqlGenerationHelper.DelimitIdentifier(operation.Name))
-                    .Append(" SET");
-                DefaultValue(operation.DefaultValue, operation.DefaultValueSql, builder);
-                builder.AppendLine(Dependencies.SqlGenerationHelper.StatementTerminator);
+                if (operation.ColumnType != "longtext")
+                {
+                    builder
+                        .Append("ALTER TABLE ")
+                        .Append(Dependencies.SqlGenerationHelper.DelimitIdentifier(operation.Table, operation.Schema))
+                        .Append(" ALTER COLUMN ")
+                        .Append(Dependencies.SqlGenerationHelper.DelimitIdentifier(operation.Name))
+                        .Append(" SET");
+                    DefaultValue(operation.DefaultValue, operation.DefaultValueSql, builder);
+                    builder.AppendLine(Dependencies.SqlGenerationHelper.StatementTerminator);
+                }
             }
 
             if (narrowed)
@@ -1002,6 +1005,14 @@ namespace Microsoft.EntityFrameworkCore.Migrations
                         break;
                 }
             }
+            if (identity)
+            {
+                defaultValue = null;
+            }
+            else if (matchType.StartsWith("longtext"))
+            {
+                defaultValue = null;
+            }
 
             base.ColumnDefinition(
                 schema,
@@ -1014,9 +1025,7 @@ namespace Microsoft.EntityFrameworkCore.Migrations
                 fixedLength,
                 rowVersion,
                 nullable,
-                identity
-                    ? null
-                    : defaultValue,
+                defaultValue,
                 defaultValueSql,
                 computedColumnSql,
                 annotatable,
