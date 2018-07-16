@@ -12,7 +12,6 @@
       <PackageLicenseUrl>https://github.com/PomeloFoundation/Pomelo.EntityFrameworkCore.MySql/blob/master/LICENSE</PackageLicenseUrl>
       <RepositoryType>git</RepositoryType>
       <RepositoryUrl>git://github.com/PomeloFoundation/Pomelo.EntityFrameworkCore.MySql</RepositoryUrl>
-      <Version>2.1.0-rc2-t000-FixByLsj-20180611-5-debug</Version>
   </PropertyGroup>
 
   <ItemGroup>
