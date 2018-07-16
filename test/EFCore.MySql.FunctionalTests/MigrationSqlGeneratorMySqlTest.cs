@@ -4,6 +4,7 @@ using Pomelo.EntityFrameworkCore.MySql.Metadata.Internal;
 using Pomelo.EntityFrameworkCore.MySql.FunctionalTests.TestUtilities;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Metadata.Internal;
 using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Migrations.Operations;
 using Microsoft.Extensions.DependencyInjection;
@@ -233,7 +234,7 @@ namespace Pomelo.EntityFrameworkCore.MySql.FunctionalTests
             base.AddColumnOperation_with_defaultValue();
 
             Assert.Equal(
-                @"ALTER TABLE `dbo`.`People` ADD `Name` varchar(30) NOT NULL DEFAULT N'John Doe';" + EOL,
+                @"ALTER TABLE `dbo`.`People` ADD `Name` varchar(30) NOT NULL DEFAULT 'John Doe';" + EOL,
                 Sql);
         }
 
@@ -316,7 +317,7 @@ namespace Pomelo.EntityFrameworkCore.MySql.FunctionalTests
             base.AddColumnOperation_with_computed_column_SQL();
 
             Assert.Equal(
-                @"ALTER TABLE `People` ADD `Birthday` date NULL AS CURRENT_TIMESTAMP;" + EOL,
+                @"ALTER TABLE `People` ADD `Birthday` date AS (CURRENT_TIMESTAMP) NULL;" + EOL,
                 Sql);
         }
 
@@ -456,6 +457,10 @@ namespace Pomelo.EntityFrameworkCore.MySql.FunctionalTests
         public void AlterColumnOperation_with_no_default_value_column_types(string type)
         {
             Generate(
+                builder =>
+                {
+                    ((Model)builder.Model).SetProductVersion("2.1.0");
+                },
                 new AlterColumnOperation
                 {
                     Table = "People",
@@ -492,12 +497,92 @@ namespace Pomelo.EntityFrameworkCore.MySql.FunctionalTests
                 Sql);
         }
 
+        [Fact]
+        public void AlterColumnOperation_type_with_index()
+        {
+            Generate(
+                builder =>
+                {
+                    ((Model)builder.Model).SetProductVersion("2.1.0");
+                    builder.Entity("People", eb =>
+                    {
+                        eb.Property<string>("Blob");
+                        eb.HasIndex("Blob");
+                    });
+                },
+                new AlterColumnOperation
+                {
+                    Table = "People",
+                    Name = "Blob",
+                    ClrType = typeof(string),
+                    ColumnType = "char(127)",
+                    OldColumn = new ColumnOperation
+                    {
+                        ColumnType = "varchar(127)",
+                    },
+                    IsNullable = true
+                });
+
+            Assert.Equal(
+                "ALTER TABLE `People` MODIFY COLUMN `Blob` char(127) NULL;" + EOL,
+                Sql);
+        }
+
+        [Fact]
+        public void AlterColumnOperation_ComputedColumnSql_with_index()
+        {
+            Generate(
+                builder =>
+                {
+                    ((Model)builder.Model).SetProductVersion("2.1.0");
+                    builder.Entity("People", eb =>
+                    {
+                        eb.Property<string>("Blob");
+                        eb.HasIndex("Blob");
+                    });
+                },
+                new AlterColumnOperation
+                {
+                    Table = "People",
+                    Name = "Blob",
+                    ClrType = typeof(string),
+                    ComputedColumnSql = "'TEST'",
+                    ColumnType = "varchar(95)"
+                });
+
+            Assert.Equal(
+                "ALTER TABLE `People` MODIFY COLUMN `Blob` varchar(95) AS ('TEST');" + EOL,
+                Sql);
+        }
+
         public override void AddForeignKeyOperation_with_name()
         {
             base.AddForeignKeyOperation_with_name();
 
             Assert.Equal(
                 "ALTER TABLE `dbo`.`People` ADD CONSTRAINT `FK_People_Companies` FOREIGN KEY (`EmployerId1`, `EmployerId2`) REFERENCES `hr`.`Companies` (`Id1`, `Id2`) ON DELETE CASCADE;" +
+                EOL,
+                Sql);
+        }
+
+        [Fact]
+        public virtual void AddForeignKeyOperation_with_long_name()
+        {
+            Generate(
+                new AddForeignKeyOperation
+                {
+                    Table = "People",
+                    Schema = "dbo",
+                    Name = "FK_ASuperLongForeignKeyNameThatIsDefinetelyNotGoingToFitInThe64CharactersLimit",
+                    Columns = new[] {"EmployerId1", "EmployerId2"},
+                    PrincipalTable = "Companies",
+                    PrincipalSchema = "hr",
+                    PrincipalColumns = new[] {"Id1", "Id2"},
+                    OnDelete = ReferentialAction.Cascade
+                });
+
+            Assert.Equal(
+                "ALTER TABLE `dbo`.`People` ADD CONSTRAINT `FK_ASuperLongForeignKeyNameThatIsDefinetelyNotGoingToFitInThe64C` FOREIGN KEY (`EmployerId1`, `EmployerId2`) REFERENCES `hr`.`Companies` (`Id1`, `Id2`) ON DELETE CASCADE;" +
                 EOL,
                 Sql);
         }
@@ -661,6 +746,23 @@ DROP PROCEDURE IF EXISTS POMELO_AFTER_ADD_PRIMARY_KEY;".Replace("\r", string.Emp
 
             Assert.Equal(
                 "CREATE INDEX `IX_People_Name` ON `People` (`Name`);" + EOL,
+                Sql);
+        }
+
+        [Fact]
+        public virtual void CreateIndexOperation_with_long_name()
+        {
+            Generate(
+                new CreateIndexOperation
+                {
+                    Name = "IX_ASuperLongForeignKeyNameThatIsDefinetelyNotGoingToFitInThe64CharactersLimit",
+                    Table = "People",
+                    Columns = new[] {"Name"},
+                    IsUnique = false
+                });
+
+            Assert.Equal(
+                "CREATE INDEX `IX_ASuperLongForeignKeyNameThatIsDefinetelyNotGoingToFitInThe64C` ON `People` (`Name`);" + EOL,
                 Sql);
         }
 
